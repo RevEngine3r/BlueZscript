@@ -1,0 +1,27 @@
+[Unit]
+Description=Secure BLE Listener Service with TOTP Authentication
+After=bluetooth.service network.target
+Requires=bluetooth.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/BlueZscript/raspberry-pi
+ExecStart=/opt/BlueZscript/venv/bin/python3 /opt/BlueZscript/raspberry-pi/ble_listener_secure.py
+Restart=always
+RestartSec=10
+
+# Security
+ProtectSystem=full
+NoNewPrivileges=true
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ble-listener-secure
+
+# Environment
+Environment="PYTHONUNBUFFERED=1"
+
+[Install]
+WantedBy=multi-user.target
