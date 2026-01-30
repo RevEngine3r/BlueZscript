@@ -1,0 +1,20 @@
+[Unit]
+Description=BLE Listener Service
+After=bluetooth.service
+Requires=bluetooth.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/BlueZscript
+ExecStart=/opt/BlueZscript/venv/bin/python3 /opt/BlueZscript/ble_listener.py
+Restart=always
+RestartSec=10
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ble-listener
+
+[Install]
+WantedBy=multi-user.target
