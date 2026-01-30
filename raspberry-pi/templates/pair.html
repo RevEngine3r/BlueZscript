@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}Pair Device - BlueZscript{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="bi bi-qr-code"></i> Pair New Device</h4>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> <strong>Instructions:</strong>
+                    <ol class="mb-0 mt-2">
+                        <li>Open the BlueZscript app on your phone</li>
+                        <li>Tap "Pair Device" or the QR code scanner</li>
+                        <li>Scan the QR code below</li>
+                        <li>Enter a name for this device</li>
+                        <li>Complete pairing in the app</li>
+                    </ol>
+                </div>
+                
+                <div class="text-center py-4">
+                    <h5 class="mb-3">Scan this QR Code</h5>
+                    <img id="qr-code" src="/api/qr/{{ device_id }}?secret={{ pairing_data | urlencode }}" 
+                         alt="Pairing QR Code" 
+                         class="img-fluid" 
+                         style="max-width: 400px; border: 2px solid #dee2e6; border-radius: 8px; padding: 20px; background: white;">
+                    
+                    <div class="mt-4">
+                        <p class="text-muted">Device ID: <code>{{ device_id }}</code></p>
+                    </div>
+                </div>
+                
+                <div class="alert alert-warning mt-4">
+                    <i class="bi bi-exclamation-triangle"></i> <strong>Security Notice:</strong>
+                    This QR code contains sensitive pairing credentials. Do not share it with untrusted parties.
+                </div>
+                
+                <div class="text-center mt-4">
+                    <a href="/" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left"></i> Back to Dashboard
+                    </a>
+                    <button onclick="window.print()" class="btn btn-outline-primary">
+                        <i class="bi bi-printer"></i> Print QR Code
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+@media print {
+    .navbar, footer, .btn, .alert {
+        display: none !important;
+    }
+    
+    #qr-code {
+        max-width: 100% !important;
+    }
+}
+</style>
+{% endblock %}

@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - BlueZscript{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2><i class="bi bi-speedometer2"></i> Dashboard</h2>
+        <p class="text-muted">Manage your paired devices</p>
+    </div>
+</div>
+
+<!-- Stats -->
+<div class="row mb-4">
+    <div class="col-md-4 mb-3">
+        <div class="stat-card">
+            <div class="stat-value">{{ device_count }}</div>
+            <div class="stat-label">Paired Devices</div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-3">
+        <div class="stat-card">
+            <div class="stat-value"><i class="bi bi-shield-check text-success"></i></div>
+            <div class="stat-label">Secure</div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-3">
+        <div class="stat-card">
+            <div class="stat-value"><i class="bi bi-bluetooth text-primary"></i></div>
+            <div class="stat-label">BLE Ready</div>
+        </div>
+    </div>
+</div>
+
+<!-- Actions -->
+<div class="row mb-4">
+    <div class="col-12">
+        <a href="/pair/new" class="btn btn-primary btn-lg">
+            <i class="bi bi-plus-circle"></i> Pair New Device
+        </a>
+    </div>
+</div>
+
+<!-- Devices Table -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-phone"></i> Paired Devices</h5>
+            </div>
+            <div class="card-body">
+                {% if devices %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Device Name</th>
+                                <th>Device ID</th>
+                                <th>Paired At</th>
+                                <th>Last Used</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for device in devices %}
+                            <tr>
+                                <td><strong>{{ device.device_name }}</strong></td>
+                                <td><code>{{ device.device_id }}</code></td>
+                                <td>{{ device.paired_at_str }}</td>
+                                <td>{{ device.last_used_str }}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-danger" onclick="revokeDevice('{{ device.device_id }}', '{{ device.device_name }}')">
+                                        <i class="bi bi-trash"></i> Revoke
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-inbox" style="font-size: 3rem; color: #ccc;"></i>
+                    <p class="text-muted mt-3">No devices paired yet</p>
+                    <a href="/pair/new" class="btn btn-primary">Pair Your First Device</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function revokeDevice(deviceId, deviceName) {
+    if (!confirm(`Are you sure you want to revoke pairing for "${deviceName}"?`)) {
+        return;
+    }
+    
+    fetch(`/api/devices/${deviceId}/revoke`, {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Device pairing revoked successfully');
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Error revoking device: ' + error);
+    });
+}
+</script>
+{% endblock %}

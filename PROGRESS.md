@@ -2,7 +2,7 @@
 
 ## Active Feature
 **Feature**: Secure Pairing System with TOTP Authentication
-**Status**: In Progress - Backend Development
+**Status**: In Progress - Backend Complete, Moving to BLE Integration
 **Started**: 2026-01-30
 
 ## Completed Steps
@@ -15,38 +15,49 @@
   - CryptoUtils class with TOTP, HMAC, key generation
   - 16 comprehensive unit tests (all passing)
   - Security: constant-time comparison, CSPRNG
-  - Requirements updated with pyotp and cryptography
 - ✅ **STEP 2: Pairing Manager** (Completed 2026-01-31)
   - PairingManager class with SQLite database
   - Fernet encryption for secrets at rest
-  - CRUD operations: add, get, list, remove, update
-  - Master key management (~/.bluezscript/master.key)
+  - CRUD operations with master key management
   - 14 comprehensive unit tests (all passing)
-  - Security: 600 permissions, parameterized queries, soft delete
+- ✅ **STEP 3: Flask WebUI** (Completed 2026-01-31)
+  - Flask web application with responsive Bootstrap 5 UI
+  - QR code generation for device pairing
+  - Admin dashboard: view/manage paired devices
+  - RESTful API: /api/devices, /api/qr, /api/stats
+  - Security: CSRF protection, rate limiting, secure headers
+  - 12 comprehensive unit tests (all passing)
 
 ## Current Step
-**STEP 3**: Flask WebUI with QR Code Generation
+**STEP 4**: Enhanced BLE Listener with TOTP Validation
 
 ### Plan
-- Create Flask web application for pairing interface
-- Implement QR code generation for device pairing
-- Admin dashboard to view/manage paired devices
-- RESTful API endpoints for mobile app integration
-- Responsive UI with modern CSS framework
+- Enhance existing `ble_listener.py` with TOTP validation
+- Integrate PairingManager for device verification
+- Validate incoming BLE messages against paired devices
+- Update last_used timestamp on successful auth
+- Comprehensive logging for security events
 
 ### Implementation Details
-- **Routes**:
-  - `GET /` - Dashboard with paired devices list
-  - `GET /pair/new` - Generate new pairing QR code
-  - `GET /api/devices` - List paired devices (JSON)
-  - `POST /api/devices/:id/revoke` - Revoke device pairing
-  - `GET /api/qr/:device_id` - Get QR code image
-- **QR Code Format**: JSON containing device_id and secret
-- **UI**: Bootstrap 5 or Tailwind CSS
-- **Security**: CSRF protection, rate limiting on pairing
+- **Message Format**: JSON over BLE characteristic
+  ```json
+  {
+    "device_id": "abc123",
+    "totp": "123456",
+    "timestamp": 1738267890,
+    "action": "TRIGGER"
+  }
+  ```
+- **Validation Flow**:
+  1. Parse BLE message
+  2. Check device is paired (PairingManager)
+  3. Validate TOTP against stored secret
+  4. Verify timestamp freshness (5-minute window)
+  5. Execute action if all checks pass
+  6. Update last_used timestamp
+- **Security**: Log all auth attempts (success/failure)
 
-### Next Steps (After STEP 3)
-4. STEP 4: Enhanced BLE listener with TOTP validation
+### Next Steps (After STEP 4)
 5. STEP 5: Kotlin Compose Android app structure
 6. STEP 6: Android BLE client and TOTP integration
 7. STEP 7: Testing, documentation, and deployment scripts
@@ -56,8 +67,8 @@
 - **Crypto**: PyOTP (TOTP), HMAC-SHA256, Fernet encryption
 - **Database**: SQLite3 with encrypted secrets
 - **BLE**: Bleak (async BLE library)
-- **Web UI**: Flask + QR codes + Bootstrap/Tailwind
-- **Mobile**: Kotlin + Jetpack Compose (Android)
+- **Web UI**: Flask + QR codes + Bootstrap 5
+- **Mobile**: Kotlin + Jetpack Compose (Android) - upcoming
 
 ## Security Model
 - **Layer 1**: BLE Secure Connections with bonding
@@ -65,18 +76,40 @@
 - **Layer 3**: Timestamp validation (5-minute replay protection)
 - **Storage**: Fernet symmetric encryption for secrets at rest
 - **Files**: 600 permissions on sensitive files
+- **Web**: CSRF protection, rate limiting, secure headers
 
 ## Test Coverage
 - Crypto utilities: 16/16 tests passing
 - Pairing manager: 14/14 tests passing
-- **Total**: 30 unit tests passing
+- Web UI: 12/12 tests passing
+- **Total**: 42 unit tests passing
+
+## Project Structure
+```
+BlueZscript/
+├── raspberry-pi/
+│   ├── crypto_utils.py         ✅ TOTP, HMAC, keys
+│   ├── pairing_manager.py      ✅ Device storage
+│   ├── web_ui.py               ✅ Flask web interface
+│   ├── ble_listener.py         🔄 Needs enhancement
+│   ├── requirements.txt        ✅
+│   └── templates/              ✅ HTML templates
+├── tests/
+│   ├── test_crypto_utils.py    ✅ 16 tests
+│   ├── test_pairing_manager.py ✅ 14 tests
+│   └── test_web_ui.py          ✅ 12 tests
+├── action_script.sh         ✅
+├── ble-listener.service     🔄 Needs update
+└── ROAD_MAP/                ✅
+```
 
 ## Notes
+- Web UI accessible at http://raspberry-pi:5000
+- QR codes contain device_id + secret in JSON format
 - Database uses soft delete for audit trail
-- Master encryption key stored in ~/.bluezscript/master.key
+- Master encryption key: ~/.bluezscript/master.key
 - All secrets encrypted at rest using Fernet (AES-128-CBC)
-- Parameterized SQL queries prevent injection attacks
-- No secrets logged anywhere in the application
+- Rate limiting: 1 pairing request per minute per IP
 
 ---
-*Last Updated*: 2026-01-31 00:01 +0330
+*Last Updated*: 2026-01-31 00:13 +0330

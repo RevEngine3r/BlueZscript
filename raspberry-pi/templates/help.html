@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block title %}Help - BlueZscript{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-10 mx-auto">
+        <h2><i class="bi bi-question-circle"></i> Help & Documentation</h2>
+        <p class="text-muted">Everything you need to know about BlueZscript</p>
+        
+        <div class="accordion mt-4" id="helpAccordion">
+            <!-- Getting Started -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#gettingStarted">
+                        <i class="bi bi-rocket me-2"></i> Getting Started
+                    </button>
+                </h2>
+                <div id="gettingStarted" class="accordion-collapse collapse show" data-bs-parent="#helpAccordion">
+                    <div class="accordion-body">
+                        <h5>Quick Setup</h5>
+                        <ol>
+                            <li>Install the BlueZscript mobile app on your phone</li>
+                            <li>Navigate to the "Pair Device" page on this dashboard</li>
+                            <li>Scan the QR code with your phone app</li>
+                            <li>Enter a device name and complete pairing</li>
+                            <li>Your phone can now send secure BLE triggers to this Raspberry Pi</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- How It Works -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#howItWorks">
+                        <i class="bi bi-gear me-2"></i> How It Works
+                    </button>
+                </h2>
+                <div id="howItWorks" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
+                    <div class="accordion-body">
+                        <h5>Security Architecture</h5>
+                        <p>BlueZscript uses a multi-layer security approach:</p>
+                        <ul>
+                            <li><strong>Layer 1: BLE Bonding</strong> - Encrypted Bluetooth connection</li>
+                            <li><strong>Layer 2: TOTP Authentication</strong> - Time-based one-time passwords (changes every 30 seconds)</li>
+                            <li><strong>Layer 3: Timestamp Validation</strong> - Prevents replay attacks (5-minute window)</li>
+                            <li><strong>Storage: Fernet Encryption</strong> - All secrets encrypted at rest</li>
+                        </ul>
+                        <p class="mt-3">Only paired devices with valid TOTP codes can trigger actions on your Raspberry Pi.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Pairing Process -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#pairingProcess">
+                        <i class="bi bi-link-45deg me-2"></i> Pairing Process
+                    </button>
+                </h2>
+                <div id="pairingProcess" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
+                    <div class="accordion-body">
+                        <h5>What Happens During Pairing?</h5>
+                        <ol>
+                            <li><strong>QR Code Generation:</strong> A unique device ID and shared secret are created</li>
+                            <li><strong>QR Code Scan:</strong> Your phone app receives the pairing credentials</li>
+                            <li><strong>Secure Storage:</strong> The secret is encrypted and stored on both devices</li>
+                            <li><strong>TOTP Setup:</strong> Both devices use the shared secret to generate matching codes</li>
+                            <li><strong>Ready:</strong> Your phone can now authenticate and send triggers</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Troubleshooting -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#troubleshooting">
+                        <i class="bi bi-tools me-2"></i> Troubleshooting
+                    </button>
+                </h2>
+                <div id="troubleshooting" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
+                    <div class="accordion-body">
+                        <h5>Common Issues</h5>
+                        
+                        <h6 class="mt-3">Cannot pair device:</h6>
+                        <ul>
+                            <li>Ensure your phone's camera has permission to scan QR codes</li>
+                            <li>Try regenerating a new QR code</li>
+                            <li>Check that the mobile app is installed correctly</li>
+                        </ul>
+                        
+                        <h6 class="mt-3">BLE connection fails:</h6>
+                        <ul>
+                            <li>Ensure Bluetooth is enabled on both devices</li>
+                            <li>Check that the Raspberry Pi's Bluetooth service is running: <code>sudo systemctl status bluetooth</code></li>
+                            <li>Try moving closer to the Raspberry Pi (within 10 meters)</li>
+                        </ul>
+                        
+                        <h6 class="mt-3">Authentication fails:</h6>
+                        <ul>
+                            <li>Verify that both devices have accurate system time</li>
+                            <li>Check that the device is still paired (not revoked)</li>
+                            <li>Try revoking and re-pairing the device</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Security Best Practices -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#security">
+                        <i class="bi bi-shield-check me-2"></i> Security Best Practices
+                    </button>
+                </h2>
+                <div id="security" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
+                    <div class="accordion-body">
+                        <h5>Keep Your System Secure</h5>
+                        <ul>
+                            <li>Never share QR codes with untrusted parties</li>
+                            <li>Revoke pairing immediately if a device is lost or stolen</li>
+                            <li>Regularly review your paired devices list</li>
+                            <li>Keep your Raspberry Pi and mobile app updated</li>
+                            <li>Use strong passwords for your Raspberry Pi system</li>
+                            <li>Consider firewall rules if exposing the web interface</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- API Documentation -->
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#api">
+                        <i class="bi bi-code-square me-2"></i> API Documentation
+                    </button>
+                </h2>
+                <div id="api" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
+                    <div class="accordion-body">
+                        <h5>RESTful API Endpoints</h5>
+                        
+                        <h6 class="mt-3">GET /api/devices</h6>
+                        <p>List all paired devices</p>
+                        <pre class="bg-light p-3 rounded"><code>{"success": true, "devices": [...], "count": 3}</code></pre>
+                        
+                        <h6 class="mt-3">POST /api/devices/complete</h6>
+                        <p>Complete device pairing</p>
+                        <pre class="bg-light p-3 rounded"><code>{"device_id": "...", "device_name": "My Phone", "secret": "..."}</code></pre>
+                        
+                        <h6 class="mt-3">POST /api/devices/:id/revoke</h6>
+                        <p>Revoke device pairing</p>
+                        <pre class="bg-light p-3 rounded"><code>{"success": true, "message": "Device pairing revoked"}</code></pre>
+                        
+                        <h6 class="mt-3">GET /api/stats</h6>
+                        <p>Get system statistics</p>
+                        <pre class="bg-light p-3 rounded"><code>{"success": true, "stats": {"total_devices": 5, ...}}</code></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mt-5 text-center">
+            <a href="/" class="btn btn-primary"><i class="bi bi-arrow-left"></i> Back to Dashboard</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
