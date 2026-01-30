@@ -2,7 +2,7 @@
 
 ## Active Feature
 **Feature**: Secure Pairing System with TOTP Authentication
-**Status**: Backend Complete - Ready for Mobile App Development
+**Status**: Backend Complete - Mobile App in Progress
 **Started**: 2026-01-30
 
 ## Completed Steps
@@ -14,125 +14,124 @@
 - ✅ **STEP 1: Crypto Utilities** (Completed 2026-01-30)
   - CryptoUtils class with TOTP, HMAC, key generation
   - 16 comprehensive unit tests (all passing)
-  - Security: constant-time comparison, CSPRNG
 - ✅ **STEP 2: Pairing Manager** (Completed 2026-01-31)
   - PairingManager class with SQLite database
   - Fernet encryption for secrets at rest
   - CRUD operations with master key management
   - 14 comprehensive unit tests (all passing)
 - ✅ **STEP 3: Flask WebUI** (Completed 2026-01-31)
-  - Flask web application with responsive Bootstrap 5 UI
+  - Flask web application with Bootstrap 5 UI
   - QR code generation for device pairing
-  - Admin dashboard: view/manage paired devices
-  - RESTful API: /api/devices, /api/qr, /api/stats
-  - Security: CSRF protection, rate limiting, secure headers
+  - Admin dashboard with RESTful API
   - 12 comprehensive unit tests (all passing)
 - ✅ **STEP 4: Enhanced BLE Listener** (Completed 2026-01-31)
-  - Rewrote ble_listener.py with TOTP authentication
-  - Multi-layer validation: device exists, TOTP valid, timestamp fresh
-  - JSON message parsing over BLE characteristic
-  - Update last_used timestamp on successful auth
-  - Comprehensive security logging (all auth attempts)
-  - Statistics tracking (attempts, success, failures)
+  - Multi-layer TOTP validation
+  - JSON message parsing over BLE
+  - Comprehensive security logging
   - 10 comprehensive unit tests (all passing)
-  - Updated systemd service file
+- ✅ **STEP 5: Android App Structure** (Completed 2026-01-31)
+  - Kotlin + Jetpack Compose project setup
+  - MVVM + Clean Architecture
+  - Material 3 design system
+  - Navigation graph (Home, Pairing, Settings)
+  - Room database schema
+  - Data models and repository interfaces
+  - Dependency injection (Hilt)
+  - Theme with dynamic colors
 
 ## Current Step
-**STEP 5**: Kotlin Compose Android App Structure
+**STEP 6**: Android BLE Client and TOTP Integration
 
 ### Plan
-- Create Android app with Kotlin + Jetpack Compose
-- Material 3 design system
-- Project structure: MVVM architecture
-- Screens: Home, Pairing, Settings
-- Navigation with Compose Navigation
-- Dependency injection with Hilt
+- Implement ViewModels for all screens
+- BLE service for communication with Raspberry Pi
+- TOTP generation using kotlin-onetimepassword
+- QR code scanner with CameraX + ML Kit
+- Device pairing flow (scan QR → save device)
+- Trigger button with BLE message sending
+- Permission handling (Bluetooth, Camera)
+- Repository implementation with Room
 
 ### Implementation Details
-- **Package Structure**:
-  ```
-  com.revengine3r.bluezscript/
-  ├── data/
-  │   ├── local/      (Room database)
-  │   ├── models/     (Data classes)
-  │   └── repository/ (Repository pattern)
-  ├── domain/
-  │   └── usecases/   (Business logic)
-  ├── presentation/
-  │   ├── home/       (HomeScreen, HomeViewModel)
-  │   ├── pairing/    (PairingScreen, PairingViewModel)
-  │   ├── settings/   (SettingsScreen, SettingsViewModel)
-  │   └── theme/      (Material 3 theme)
-  └── utils/          (Helpers, extensions)
-  ```
-- **Dependencies**:
-  - Jetpack Compose (UI)
-  - Room (Local database)
-  - Hilt (Dependency injection)
-  - CameraX (QR scanning)
-  - Accompanist (Permissions)
-  - Material 3
+- **HomeViewModel**: Device list, trigger action
+- **PairingViewModel**: QR scanning, device addition
+- **SettingsViewModel**: App settings
+- **BleService**: Connect, send messages, handle responses
+- **TotpManager**: Generate TOTP codes
+- **QrScanner**: CameraX preview + ML Kit detection
+- **DeviceRepositoryImpl**: Room database operations
 
-### Next Steps (After STEP 5)
-6. STEP 6: Android BLE client and TOTP integration
+### Next Steps (After STEP 6)
 7. STEP 7: Testing, documentation, and deployment scripts
 
 ## Technical Stack
 
-### Backend (Raspberry Pi)
-- **Language**: Python 3.9+
-- **Crypto**: PyOTP (TOTP), HMAC-SHA256, Fernet encryption
-- **Database**: SQLite3 with encrypted secrets
-- **BLE**: Bleak (async BLE library)
-- **Web**: Flask + QR codes + Bootstrap 5
+### Backend (Raspberry Pi) ✅ Complete
+- Python 3.9+
+- PyOTP (TOTP), Fernet encryption
+- SQLite3 with encrypted secrets
+- Bleak (BLE library)
+- Flask + Bootstrap 5
 
-### Mobile (Android)
-- **Language**: Kotlin
-- **UI**: Jetpack Compose + Material 3
-- **Architecture**: MVVM + Clean Architecture
-- **BLE**: Android BLE APIs
-- **Storage**: Room + Encrypted SharedPreferences
+### Mobile (Android) 🔄 In Progress
+- Kotlin 1.9.22
+- Jetpack Compose + Material 3
+- MVVM + Clean Architecture
+- Room database
+- Nordic BLE Library 2.7.0
+- ML Kit + CameraX
+- Hilt (DI)
 
 ## Security Model
-- **Layer 1**: BLE Secure Connections with bonding
-- **Layer 2**: TOTP (30s window, ±1 period tolerance)
-- **Layer 3**: Timestamp validation (5-minute replay protection)
-- **Storage**: Fernet symmetric encryption for secrets at rest
-- **Files**: 600 permissions on sensitive files
-- **Web**: CSRF protection, rate limiting, secure headers
-- **Logging**: All authentication attempts logged
+- **Layer 1**: BLE Secure Connections
+- **Layer 2**: TOTP (30s window, ±1 tolerance)
+- **Layer 3**: Timestamp validation (5-min replay protection)
+- **Storage**: Fernet encryption (Pi) + EncryptedSharedPreferences (Android)
+- **Permissions**: 600 on sensitive files
+- **Logging**: All auth attempts logged
 
 ## Test Coverage
-- Crypto utilities: 16/16 tests passing
-- Pairing manager: 14/14 tests passing
-- Web UI: 12/12 tests passing
-- BLE listener: 10/10 tests passing
-- **Total**: 52 unit tests passing ✅
+- Crypto utilities: 16/16 tests ✅
+- Pairing manager: 14/14 tests ✅
+- Web UI: 12/12 tests ✅
+- BLE listener: 10/10 tests ✅
+- **Total Backend**: 52 unit tests passing ✅
+- **Android Tests**: Coming in STEP 6
 
 ## Project Structure
 ```
 BlueZscript/
-├── raspberry-pi/
-│   ├── crypto_utils.py            ✅ TOTP, HMAC, keys
-│   ├── pairing_manager.py         ✅ Device storage
-│   ├── web_ui.py                  ✅ Flask web interface
-│   ├── ble_listener_secure.py     ✅ Secure BLE listener
-│   ├── ble-listener-secure.service ✅ Systemd service
-│   ├── requirements.txt           ✅
-│   └── templates/                 ✅ HTML templates
-├── tests/
-│   ├── test_crypto_utils.py       ✅ 16 tests
-│   ├── test_pairing_manager.py    ✅ 14 tests
-│   ├── test_web_ui.py             ✅ 12 tests
-│   └── test_ble_listener_secure.py ✅ 10 tests
-├── android-app/                    🔜 Next
-├── action_script.sh               ✅
-└── ROAD_MAP/                       ✅
+├── raspberry-pi/          ✅ Complete
+│   ├── crypto_utils.py
+│   ├── pairing_manager.py
+│   ├── web_ui.py
+│   ├── ble_listener_secure.py
+│   └── templates/
+├── tests/                 ✅ 52 tests passing
+├── android-app/           🔄 Structure complete, implementation next
+│   ├── app/
+│   │   └── src/main/java/com/revengine3r/bluezscript/
+│   │       ├── data/
+│   │       │   ├── local/ (Room DB)
+│   │       │   ├── models/
+│   │       │   └── repository/
+│   │       ├── domain/ (next)
+│   │       ├── presentation/
+│   │       │   ├── home/
+│   │       │   ├── pairing/
+│   │       │   ├── settings/
+│   │       │   ├── navigation/
+│   │       │   └── theme/
+│   │       ├── BlueZscriptApp.kt
+│   │       └── MainActivity.kt
+│   ├── build.gradle.kts
+│   └── settings.gradle.kts
+└── ROAD_MAP/
 ```
 
 ## Message Protocol
 
-**BLE Message Format (JSON over characteristic):**
+**BLE Message (JSON over characteristic):**
 ```json
 {
   "device_id": "abc123def456",
@@ -142,33 +141,63 @@ BlueZscript/
 }
 ```
 
-**Validation Flow:**
-1. Parse JSON from BLE
-2. Check device is paired (database lookup)
-3. Validate TOTP against stored secret (±30s window)
-4. Verify timestamp is fresh (< 5 minutes old)
-5. Execute action if all checks pass
-6. Update last_used timestamp
-7. Log all attempts (success/failure)
+**QR Code Format:**
+```json
+{
+  "device_id": "abc123def456",
+  "secret": "JBSWY3DPEHPK3PXP...",
+  "server_url": "http://raspberrypi:5000"
+}
+```
+
+## Android App Screens
+
+1. **Home Screen** ✅
+   - List of paired devices
+   - Big trigger button
+   - Navigate to pairing/settings
+
+2. **Pairing Screen** ✅
+   - QR code scanner (next: camera implementation)
+   - Device name input
+   - Save paired device
+
+3. **Settings Screen** ✅
+   - App version
+   - About info
+   - Future: theme, notifications
+
+4. **Device Detail** (structure ready)
+   - Device info
+   - Last used
+   - Unpair button
 
 ## Deployment
 
-**Raspberry Pi Services:**
-- `ble-listener-secure.service` - BLE listener with auth
-- `web-ui.service` - Flask web interface (optional)
+**Raspberry Pi:**
+```bash
+# BLE Listener
+sudo systemctl enable ble-listener-secure
+sudo systemctl start ble-listener-secure
 
-**Configuration Files:**
-- `~/.bluezscript/master.key` - Fernet master key (600)
-- `/opt/BlueZscript/data/paired_devices.db` - SQLite (600)
-- `/var/log/ble_listener_secure.log` - Security log
+# Web UI (optional)
+cd /opt/BlueZscript/raspberry-pi
+sudo ../venv/bin/python3 web_ui.py
+```
+
+**Android:**
+```bash
+cd android-app
+./gradlew assembleDebug
+# Install APK to device
+```
 
 ## Notes
-- Backend (Raspberry Pi) is complete and ready for testing
-- Web UI accessible at http://raspberry-pi:5000
-- BLE listener validates all authentications before executing actions
-- All secrets encrypted at rest using Fernet (AES-128-CBC)
-- Comprehensive logging for security auditing
-- Ready to begin Android app development
+- Raspberry Pi backend is production-ready
+- Android app structure complete, ready for BLE/TOTP implementation
+- All backend tests passing (52/52)
+- Material 3 with dynamic colors on Android 12+
+- Clean Architecture ensures testability and maintainability
 
 ---
-*Last Updated*: 2026-01-31 00:18 +0330
+*Last Updated*: 2026-01-31 00:20 +0330
