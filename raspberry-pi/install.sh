@@ -1,84 +1,58 @@
 #!/bin/bash
 
 ################################################################################
-# BlueZscript Automated Installer
-# 
-# This script automates the installation of BlueZscript on Raspberry Pi.
-# It installs dependencies, sets up the Python environment, and configures
-# the systemd service.
-#
-# Usage:
-#   curl -fsSL https://raw.githubusercontent.com/RevEngine3r/BlueZscript/main/raspberry-pi/install.sh | sudo bash
-#
-# Or download and run:
-#   wget https://raw.githubusercontent.com/RevEngine3r/BlueZscript/main/raspberry-pi/install.sh
-#   chmod +x install.sh
-#   sudo ./install.sh
-#
+# BlueZscript Automated Installation Script
 # Author: RevEngine3r
-# License: MIT
+# Description: Automated setup for Raspberry Pi BLE listener and web UI
+# Requirements: Raspberry Pi OS (Bullseye+), Python 3.9+, root privileges
 ################################################################################
 
-set -e  # Exit on error
+set -e  # Exit on any error
 
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
 INSTALL_DIR="/opt/BlueZscript"
 REPO_URL="https://github.com/RevEngine3r/BlueZscript.git"
 SERVICE_NAME="ble-listener-secure"
+PYTHON_VERSION="3.9"
 
 ################################################################################
 # Helper Functions
 ################################################################################
 
-print_header() {
-    echo -e "${BLUE}"
-    echo "═══════════════════════════════════════════════════════════════"
-    echo "  $1"
-    echo "═══════════════════════════════════════════════════════════════"
-    echo -e "${NC}"
-}
-
-print_success() {
-    echo -e "${GREEN}✓ $1${NC}"
+print_status() {
+    echo -e "${GREEN}[*]${NC} $1"
 }
 
 print_error() {
-    echo -e "${RED}✗ $1${NC}"
+    echo -e "${RED}[!]${NC} $1"
 }
 
 print_warning() {
-    echo -e "${YELLOW}⚠ $1${NC}"
-}
-
-print_info() {
-    echo -e "${BLUE}ℹ $1${NC}"
+    echo -e "${YELLOW}[!]${NC} $1"
 }
 
 check_root() {
-    if [ "$EUID" -ne 0 ]; then
+    if [[ $EUID -ne 0 ]]; then
         print_error "This script must be run as root (use sudo)"
         exit 1
     fi
 }
 
 check_os() {
-    if [ ! -f /etc/os-release ]; then
-        print_error "Cannot determine OS. /etc/os-release not found."
+    if [[ ! -f /etc/os-release ]]; then
+        print_error "Cannot determine OS version"
         exit 1
     fi
     
     . /etc/os-release
-    
-    if [[ "$ID" != "raspbian" && "$ID" != "debian" ]]; then
-        print_warning "This script is designed for Raspberry Pi OS (Debian-based)."
-        print_warning "Detected OS: $PRETTY_NAME"
+    if [[ "$ID" != "raspbian" ]] && [[ "$ID" != "debian" ]]; then
+        print_warning "This script is designed for Raspberry Pi OS/Debian"
         read -p "Continue anyway? (y/N): " -n 1 -r
         echo
         if [[ ! $REPLY =~ ^[Yy]$ ]]; then
@@ -87,16 +61,21 @@ check_os() {
     fi
 }
 
-check_bluetooth() {
-    if ! command -v hciconfig &> /dev/null; then
-        return 1
+check_python() {
+    if ! command -v python3 &> /dev/null; then
+        print_error "Python 3 is not installed"
+        exit 1
     fi
     
-    if ! hciconfig hci0 &> /dev/null; then
-        return 1
-    fi
+    PYTHON_VER=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+    print_status "Detected Python $PYTHON_VER"
     
-    return 0
+    if awk "BEGIN {exit !($PYTHON_VER >= $PYTHON_VERSION)}"; then
+        print_status "Python version is compatible"
+    else
+        print_error "Python $PYTHON_VERSION or higher is required (found $PYTHON_VER)"
+        exit 1
+    fi
 }
 
 ################################################################################
@@ -104,225 +83,233 @@ check_bluetooth() {
 ################################################################################
 
 install_system_dependencies() {
-    print_header "Installing System Dependencies"
-    
-    print_info "Updating package lists..."
+    print_status "Updating package lists..."
     apt-get update -qq
     
-    print_info "Installing packages..."
-    apt-get install -y -qq \
-        python3 \
+    print_status "Installing system dependencies..."
+    apt-get install -y \
         python3-pip \
         python3-venv \
+        python3-dev \
         bluetooth \
         bluez \
         libbluetooth-dev \
+        libglib2.0-dev \
         git \
         sqlite3 \
         curl \
-        || { print_error "Failed to install system dependencies"; exit 1; }
+        > /dev/null 2>&1
     
-    print_success "System dependencies installed"
+    print_status "System dependencies installed successfully"
 }
 
-setup_bluetooth() {
-    print_header "Configuring Bluetooth"
+enable_bluetooth() {
+    print_status "Configuring Bluetooth..."
     
-    print_info "Enabling Bluetooth service..."
+    # Unblock Bluetooth
+    rfkill unblock bluetooth || true
+    
+    # Enable and start Bluetooth service
     systemctl enable bluetooth
     systemctl start bluetooth
     
-    # Unblock Bluetooth if blocked
-    if command -v rfkill &> /dev/null; then
-        rfkill unblock bluetooth
-    fi
-    
-    # Bring up Bluetooth interface
-    if check_bluetooth; then
-        hciconfig hci0 up
-        print_success "Bluetooth configured successfully"
-        print_info "Bluetooth address: $(hciconfig hci0 | grep 'BD Address' | awk '{print $3}')"
+    # Check if Bluetooth is available
+    if ! hciconfig hci0 &> /dev/null; then
+        print_warning "Bluetooth adapter not detected. Please ensure BLE is supported."
     else
-        print_warning "Bluetooth interface not detected. This may be normal on some systems."
-        print_warning "Bluetooth will be activated when hardware is available."
+        print_status "Bluetooth adapter detected and configured"
     fi
 }
 
 clone_repository() {
-    print_header "Cloning Repository"
+    print_status "Cloning BlueZscript repository..."
     
-    if [ -d "$INSTALL_DIR" ]; then
-        print_warning "Installation directory already exists: $INSTALL_DIR"
+    # Remove existing directory if present
+    if [[ -d "$INSTALL_DIR" ]]; then
+        print_warning "Existing installation found at $INSTALL_DIR"
         read -p "Remove and reinstall? (y/N): " -n 1 -r
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]; then
-            print_info "Removing existing installation..."
             rm -rf "$INSTALL_DIR"
         else
-            print_info "Updating existing installation..."
-            cd "$INSTALL_DIR"
-            git pull
-            return
-        fi
-    fi
-    
-    print_info "Cloning from $REPO_URL..."
-    git clone -q "$REPO_URL" "$INSTALL_DIR" || { print_error "Failed to clone repository"; exit 1; }
-    
-    print_success "Repository cloned to $INSTALL_DIR"
-}
-
-setup_python_environment() {
-    print_header "Setting Up Python Environment"
-    
-    cd "$INSTALL_DIR"
-    
-    print_info "Creating virtual environment..."
-    python3 -m venv venv || { print_error "Failed to create virtual environment"; exit 1; }
-    
-    print_info "Upgrading pip..."
-    ./venv/bin/pip install --upgrade pip setuptools wheel -q
-    
-    print_info "Installing Python dependencies..."
-    ./venv/bin/pip install -r raspberry-pi/requirements.txt -q || { print_error "Failed to install Python packages"; exit 1; }
-    
-    print_success "Python environment configured"
-}
-
-run_tests() {
-    print_header "Running Tests"
-    
-    cd "$INSTALL_DIR"
-    
-    print_info "Running unit tests..."
-    if ./venv/bin/python3 -m pytest tests/ -v --tb=short; then
-        print_success "All tests passed (52/52)"
-    else
-        print_warning "Some tests failed. Installation will continue, but functionality may be impaired."
-        read -p "Continue? (y/N): " -n 1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            print_error "Installation aborted"
             exit 1
         fi
     fi
+    
+    # Clone repository
+    git clone "$REPO_URL" "$INSTALL_DIR" > /dev/null 2>&1
+    cd "$INSTALL_DIR"
+    
+    print_status "Repository cloned successfully"
 }
 
-setup_data_directory() {
-    print_header "Setting Up Data Directory"
+setup_python_environment() {
+    print_status "Setting up Python virtual environment..."
     
-    local data_dir="$INSTALL_DIR/raspberry-pi/data"
+    cd "$INSTALL_DIR"
     
-    print_info "Creating data directory..."
-    mkdir -p "$data_dir"
+    # Create virtual environment
+    python3 -m venv venv
     
-    print_info "Setting permissions..."
-    chmod 700 "$data_dir"
-    chown root:root "$data_dir"
+    # Activate and install dependencies
+    print_status "Installing Python dependencies (this may take a few minutes)..."
+    ./venv/bin/pip install --upgrade pip > /dev/null 2>&1
+    ./venv/bin/pip install -r raspberry-pi/requirements.txt > /dev/null 2>&1
     
-    print_success "Data directory configured: $data_dir"
+    print_status "Python environment configured successfully"
 }
 
-setup_action_script() {
-    print_header "Configuring Action Script"
+setup_directories() {
+    print_status "Creating data directories..."
     
-    local script="$INSTALL_DIR/raspberry-pi/action_script.sh"
+    cd "$INSTALL_DIR/raspberry-pi"
     
-    if [ ! -f "$script" ]; then
-        print_info "Creating default action script..."
-        cat > "$script" << 'EOF'
+    # Create necessary directories
+    mkdir -p data logs templates/static
+    
+    # Set secure permissions
+    chmod 700 data
+    chmod 755 logs
+    chmod 755 templates
+    
+    # Create action script if not exists
+    if [[ ! -f action_script.sh ]]; then
+        cat > action_script.sh << 'EOF'
 #!/bin/bash
-# Default action script for BlueZscript
-# Edit this file to customize the action
+################################################################################
+# BlueZscript Action Script
+# This script is executed when a valid BLE trigger is received
+# Customize this to perform your desired actions
+################################################################################
 
-echo "[$(date)] Trigger received" >> /tmp/bluezscript_triggers.log
-echo "Action executed successfully"
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Action triggered" >> /opt/BlueZscript/raspberry-pi/logs/actions.log
+
+# Example: Blink LED on GPIO 17
+# Uncomment and modify as needed
+# echo "17" > /sys/class/gpio/export 2>/dev/null || true
+# echo "out" > /sys/class/gpio/gpio17/direction
+# echo "1" > /sys/class/gpio/gpio17/value
+# sleep 2
+# echo "0" > /sys/class/gpio/gpio17/value
+
+# Example: Take a photo with PiCamera
+# raspistill -o /opt/BlueZscript/raspberry-pi/logs/capture_$(date +%s).jpg
+
+# Example: Send notification
+# curl -X POST https://your-webhook-url.com/notify -d "action=triggered"
+
+echo "Action completed successfully"
 EOF
+        chmod +x action_script.sh
     fi
     
-    chmod +x "$script"
-    print_success "Action script configured: $script"
-    print_info "Edit this file to customize your trigger action"
+    print_status "Directories created and configured"
 }
 
 install_systemd_service() {
-    print_header "Installing Systemd Service"
+    print_status "Installing systemd service..."
     
-    local service_file="/etc/systemd/system/${SERVICE_NAME}.service"
+    cd "$INSTALL_DIR/raspberry-pi"
     
-    print_info "Copying service file..."
-    cp "$INSTALL_DIR/raspberry-pi/ble-listener-secure.service" "$service_file" || { print_error "Failed to copy service file"; exit 1; }
+    # Copy service file
+    cp ble-listener-secure.service /etc/systemd/system/
     
-    print_info "Reloading systemd..."
+    # Reload systemd
     systemctl daemon-reload
     
-    print_info "Enabling service..."
-    systemctl enable "${SERVICE_NAME}.service"
+    # Enable service (but don't start yet)
+    systemctl enable "$SERVICE_NAME"
     
-    print_info "Starting service..."
-    systemctl start "${SERVICE_NAME}.service"
+    print_status "Systemd service installed and enabled"
+}
+
+generate_master_key() {
+    print_status "Generating master encryption key..."
     
-    sleep 2
+    cd "$INSTALL_DIR"
     
-    if systemctl is-active --quiet "${SERVICE_NAME}.service"; then
-        print_success "Service installed and started successfully"
+    # Generate master key using Python
+    ./venv/bin/python3 -c "
+import os
+from cryptography.fernet import Fernet
+
+key_file = 'raspberry-pi/data/master.key'
+if not os.path.exists(key_file):
+    key = Fernet.generate_key()
+    with open(key_file, 'wb') as f:
+        f.write(key)
+    os.chmod(key_file, 0o600)
+    print('Master key generated successfully')
+else:
+    print('Master key already exists, skipping...')
+"
+    
+    # Set secure permissions
+    chmod 600 raspberry-pi/data/master.key
+    chown root:root raspberry-pi/data/master.key
+    
+    print_status "Master encryption key secured"
+}
+
+run_tests() {
+    print_status "Running unit tests to verify installation..."
+    
+    cd "$INSTALL_DIR"
+    
+    if ./venv/bin/python3 -m pytest tests/ -q > /dev/null 2>&1; then
+        print_status "All tests passed ✓"
     else
-        print_warning "Service installed but not running. Check logs:"
-        print_info "sudo journalctl -u ${SERVICE_NAME} -n 50"
+        print_warning "Some tests failed. Installation may still work, but please check logs."
     fi
 }
 
-print_completion_info() {
-    print_header "Installation Complete!"
-    
-    echo -e "${GREEN}"
-    cat << "EOF"
-    ____  __           _____           _       __ 
-   / __ )/ /_  _____  /__  /_  _______(_)___  / /_
-  / __  / / / / / _ \   / / / / / ___/ / __ \/ __/
- / /_/ / / /_/ /  __/  / /_\ \/ /  / / /_/ / /_  
-/_____/_/\__,_/\___/  /____/\_\_/ /_/ .___/\__/  
-                                   /_/            
+print_summary() {
+    cat << EOF
+
+${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}
+${GREEN}    BlueZscript Installation Complete! 🎉${NC}
+${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}
+
+${YELLOW}Installation Directory:${NC} $INSTALL_DIR
+
+${YELLOW}Next Steps:${NC}
+
+1. ${GREEN}Start the BLE Listener Service:${NC}
+   sudo systemctl start $SERVICE_NAME
+   sudo systemctl status $SERVICE_NAME
+
+2. ${GREEN}Start the Web UI (optional):${NC}
+   cd $INSTALL_DIR/raspberry-pi
+   ../venv/bin/python3 web_ui.py
+   
+   Access at: http://$(hostname -I | awk '{print $1}'):5000
+
+3. ${GREEN}Pair Your Android Device:${NC}
+   - Open Web UI
+   - Click "Pair New Device"
+   - Scan QR code with Android app
+
+4. ${GREEN}Customize Action Script:${NC}
+   sudo nano $INSTALL_DIR/raspberry-pi/action_script.sh
+
+${YELLOW}Useful Commands:${NC}
+
+- Check service status:  ${GREEN}sudo systemctl status $SERVICE_NAME${NC}
+- View logs:            ${GREEN}sudo journalctl -u $SERVICE_NAME -f${NC}
+- Restart service:      ${GREEN}sudo systemctl restart $SERVICE_NAME${NC}
+- Run tests:            ${GREEN}cd $INSTALL_DIR && ./venv/bin/pytest tests/ -v${NC}
+
+${YELLOW}Documentation:${NC}
+- Installation Guide:   $INSTALL_DIR/INSTALL.md
+- Troubleshooting:      $INSTALL_DIR/TROUBLESHOOTING.md
+- Testing Guide:        $INSTALL_DIR/TESTING.md
+
+${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}
+
+For support, visit: https://github.com/RevEngine3r/BlueZscript
+
 EOF
-    echo -e "${NC}"
-    
-    echo
-    print_info "Installation directory: $INSTALL_DIR"
-    print_info "Service name: ${SERVICE_NAME}.service"
-    echo
-    
-    print_header "Next Steps"
-    echo
-    echo "1. Check service status:"
-    echo -e "   ${BLUE}sudo systemctl status ${SERVICE_NAME}${NC}"
-    echo
-    echo "2. View logs:"
-    echo -e "   ${BLUE}sudo journalctl -u ${SERVICE_NAME} -f${NC}"
-    echo
-    echo "3. Start Web UI:"
-    echo -e "   ${BLUE}cd $INSTALL_DIR/raspberry-pi${NC}"
-    echo -e "   ${BLUE}sudo ../venv/bin/python3 web_ui.py${NC}"
-    echo
-    echo "4. Access Web UI:"
-    local ip=$(hostname -I | awk '{print $1}')
-    echo -e "   ${BLUE}http://${ip}:5000${NC}"
-    echo
-    echo "5. Customize action script:"
-    echo -e "   ${BLUE}sudo nano $INSTALL_DIR/raspberry-pi/action_script.sh${NC}"
-    echo
-    echo "6. Install Android app:"
-    echo -e "   ${BLUE}https://github.com/RevEngine3r/BlueZscript/releases${NC}"
-    echo
-    
-    print_header "Documentation"
-    echo
-    echo -e "${BLUE}Installation Guide:${NC} $INSTALL_DIR/INSTALL.md"
-    echo -e "${BLUE}Testing Guide:${NC} $INSTALL_DIR/TESTING.md"
-    echo -e "${BLUE}Troubleshooting:${NC} $INSTALL_DIR/TROUBLESHOOTING.md"
-    echo -e "${BLUE}Full README:${NC} $INSTALL_DIR/README.md"
-    echo
-    
-    print_success "Happy automating! 🚀"
-    echo
 }
 
 ################################################################################
@@ -331,31 +318,56 @@ EOF
 
 main() {
     clear
-    
-    print_header "BlueZscript Installer"
-    echo -e "${BLUE}Version: 1.0.0${NC}"
-    echo -e "${BLUE}Author: RevEngine3r${NC}"
-    echo
+    echo -e "${GREEN}"
+    cat << "EOF"
+ ____  _             ______            _       _   
+|  _ \| |           |___  /           (_)     | |  
+| |_) | |_   _  ___    / / ___  ___ _ __ _ __| |_ 
+|  _ <| | | | |/ _ \  / / / __|/ __| '__| '_ \ __|
+| |_) | | |_| |  __/ / /__\__ \ (__| |  | |_) | |_ 
+|____/|_|\__,_|\___/_____/___/\___|_|  | .__/ \__|
+                                       | |        
+                                       |_|        
+EOF
+    echo -e "${NC}"
+    echo "Automated Installation Script"
+    echo "Version 1.0.0"
+    echo ""
     
     # Pre-flight checks
+    print_status "Running pre-flight checks..."
     check_root
     check_os
+    check_python
+    
+    echo ""
+    read -p "Proceed with installation? (y/N): " -n 1 -r
+    echo ""
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        print_error "Installation cancelled"
+        exit 1
+    fi
+    
+    echo ""
+    print_status "Starting installation..."
+    echo ""
     
     # Installation steps
     install_system_dependencies
-    setup_bluetooth
+    enable_bluetooth
     clone_repository
     setup_python_environment
-    run_tests
-    setup_data_directory
-    setup_action_script
+    setup_directories
+    generate_master_key
     install_systemd_service
+    run_tests
     
-    # Completion
-    print_completion_info
+    # Summary
+    print_summary
 }
 
-# Run main installation
-main
+# Trap errors
+trap 'print_error "Installation failed at line $LINENO. Check logs for details."' ERR
 
-exit 0
+# Run main installation
+main "$@"
