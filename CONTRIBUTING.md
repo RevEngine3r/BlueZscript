@@ -1,20 +1,18 @@
-# Contributing to BlueZscript
+# 🤝 Contributing to BlueZscript
 
-🎉 **Thank you for considering contributing to BlueZscript!** 🎉
-
-We welcome contributions from everyone. This document provides guidelines for contributing to the project.
+First off, thank you for considering contributing to BlueZscript! It's people like you that make this project better for everyone.
 
 ## Table of Contents
 
 - [Code of Conduct](#code-of-conduct)
-- [Getting Started](#getting-started)
 - [How Can I Contribute?](#how-can-i-contribute)
 - [Development Setup](#development-setup)
 - [Coding Standards](#coding-standards)
-- [Commit Messages](#commit-messages)
+- [Commit Guidelines](#commit-guidelines)
 - [Pull Request Process](#pull-request-process)
-- [Testing Requirements](#testing-requirements)
+- [Testing](#testing)
 - [Documentation](#documentation)
+- [Community](#community)
 
 ---
 
@@ -22,58 +20,26 @@ We welcome contributions from everyone. This document provides guidelines for co
 
 ### Our Pledge
 
-We pledge to make participation in our project a harassment-free experience for everyone, regardless of age, body size, disability, ethnicity, gender identity and expression, level of experience, nationality, personal appearance, race, religion, or sexual identity and orientation.
+We are committed to providing a welcoming and inspiring community for all. Please be respectful and constructive in your interactions.
 
 ### Our Standards
 
 **Positive behavior includes:**
 - Using welcoming and inclusive language
-- Being respectful of differing viewpoints
+- Being respectful of differing viewpoints and experiences
 - Gracefully accepting constructive criticism
 - Focusing on what is best for the community
 - Showing empathy towards other community members
 
 **Unacceptable behavior includes:**
-- Harassment, trolling, or insulting/derogatory comments
+- Trolling, insulting/derogatory comments, and personal attacks
 - Public or private harassment
 - Publishing others' private information without permission
 - Other conduct which could reasonably be considered inappropriate
 
 ### Enforcement
 
-Instances of abusive, harassing, or otherwise unacceptable behavior may be reported by opening an issue or contacting the project maintainers.
-
----
-
-## Getting Started
-
-### Prerequisites
-
-- **Git** for version control
-- **Python 3.9+** for backend development
-- **Kotlin/Android Studio** for mobile development
-- **Raspberry Pi** (optional, for hardware testing)
-- **Android device** (optional, for app testing)
-
-### Fork and Clone
-
-```bash
-# Fork repository on GitHub
-# Then clone your fork:
-git clone https://github.com/YOUR_USERNAME/BlueZscript.git
-cd BlueZscript
-
-# Add upstream remote
-git remote add upstream https://github.com/RevEngine3r/BlueZscript.git
-```
-
-### Keep Your Fork Updated
-
-```bash
-git fetch upstream
-git checkout main
-git merge upstream/main
-```
+Instances of abusive, harassing, or otherwise unacceptable behavior may be reported by contacting the project team. All complaints will be reviewed and investigated promptly and fairly.
 
 ---
 
@@ -81,264 +47,285 @@ git merge upstream/main
 
 ### Reporting Bugs
 
-**Before submitting a bug report:**
-- Check existing issues to avoid duplicates
-- Try latest version to see if issue is fixed
-- Collect debug information (see [TROUBLESHOOTING.md](TROUBLESHOOTING.md))
+Before creating bug reports, please check existing issues to avoid duplicates.
 
-**When submitting:**
-1. Use clear, descriptive title
-2. Describe exact steps to reproduce
-3. Provide expected vs actual behavior
-4. Include system info (OS, Python version, etc.)
-5. Add logs, screenshots if relevant
+**When creating a bug report, include:**
 
-**Bug Report Template:**
+- **Clear title and description**
+- **Steps to reproduce** the behavior
+- **Expected behavior** and what actually happened
+- **Screenshots** if applicable
+- **Environment details**:
+  - Raspberry Pi model and OS version
+  - Python version
+  - Android version (if app issue)
+  - BlueZscript version
+- **Logs**:
+  ```bash
+  sudo journalctl -u ble-listener-secure -n 100 > logs.txt
+  ```
+
+**Example Bug Report:**
+
 ```markdown
-**Describe the bug**
-A clear description of what the bug is.
+## Bug: BLE Listener Crashes on Invalid Message
 
-**To Reproduce**
-1. Go to '...'
-2. Click on '...'
-3. Scroll down to '...'
-4. See error
+**Description:**
+The BLE listener service crashes when receiving malformed JSON messages.
 
-**Expected behavior**
-What you expected to happen.
+**Steps to Reproduce:**
+1. Start BLE listener
+2. Send invalid JSON: `{"invalid": json}`
+3. Service crashes
 
-**Screenshots/Logs**
-If applicable, add logs or screenshots.
+**Expected:**
+Service should log error and continue running
 
 **Environment:**
-- OS: [e.g., Raspberry Pi OS Bullseye]
-- Python: [e.g., 3.9.2]
-- BlueZscript version: [e.g., 1.0.0]
+- Raspberry Pi 4 Model B
+- Raspberry Pi OS Bullseye
+- Python 3.9.2
+- BlueZscript v1.0.0
 
-**Additional context**
-Any other relevant information.
+**Logs:**
+[Attach logs.txt]
 ```
 
 ### Suggesting Enhancements
 
-**Before suggesting:**
-- Check if suggestion already exists
-- Ensure it aligns with project goals
+Enhancement suggestions are tracked as GitHub issues.
 
-**Enhancement Template:**
+**When suggesting an enhancement, include:**
+
+- **Clear title and description**
+- **Use case** explaining why this would be useful
+- **Proposed solution** or implementation ideas
+- **Alternatives considered**
+- **Mockups/diagrams** if applicable
+
+**Example Enhancement:**
+
 ```markdown
-**Is your feature request related to a problem?**
-A clear description of the problem.
+## Enhancement: Support Multiple Actions per Device
 
-**Describe the solution you'd like**
-A clear description of what you want to happen.
+**Use Case:**
+Users want to trigger different actions (e.g., "lights on", "camera capture") from the same device.
 
-**Describe alternatives you've considered**
-Other solutions or features you've considered.
+**Proposed Solution:**
+1. Add `action_type` field to BLE message
+2. Map action types to different scripts in config
+3. Update Android app UI with action selector
 
-**Additional context**
-Mockups, examples, or other relevant information.
+**Alternatives:**
+- Use multiple paired devices (current workaround)
+- Voice commands (future feature)
+
+**Mockup:**
+[Attach UI mockup]
 ```
 
 ### Contributing Code
 
-**Good first issues:**
-- Look for issues labeled `good first issue`
-- Documentation improvements
-- Test coverage improvements
-- Bug fixes
-
-**Areas needing contribution:**
-- Android app features
-- Additional action script examples
-- Web UI improvements
-- Multi-language support
-- Performance optimizations
+We welcome code contributions! Here's how to get started.
 
 ---
 
 ## Development Setup
 
-### Backend (Raspberry Pi / Python)
+### Prerequisites
+
+- **Raspberry Pi**: Pi 3/4 with BLE support
+- **Python**: 3.9+
+- **Git**: Latest version
+- **Android Studio**: For Android development
+- **Tools**: `pytest`, `black`, `flake8`
+
+### Fork and Clone
 
 ```bash
+# Fork repository on GitHub (click Fork button)
+
+# Clone your fork
+git clone https://github.com/YOUR_USERNAME/BlueZscript.git
 cd BlueZscript
 
+# Add upstream remote
+git remote add upstream https://github.com/RevEngine3r/BlueZscript.git
+
+# Verify remotes
+git remote -v
+```
+
+### Backend Setup
+
+```bash
 # Create virtual environment
 python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+source venv/bin/activate
 
 # Install dependencies
 pip install -r raspberry-pi/requirements.txt
 
-# Install development dependencies
+# Install development tools
 pip install pytest pytest-cov black flake8 mypy
 
-# Run tests
+# Run tests to verify setup
 pytest tests/ -v
 ```
 
-### Frontend (Android / Kotlin)
+### Android Setup
 
 ```bash
-cd android-app
-
 # Open in Android Studio
-# Or build from command line:
-./gradlew build
-./gradlew test
+cd android-app
+# File → Open → Select android-app directory
+
+# Sync Gradle
+# Build → Make Project
+
+# Run on emulator or device
+# Run → Run 'app'
 ```
 
-### Pre-commit Hooks (Recommended)
+### Create Feature Branch
 
 ```bash
-pip install pre-commit
-pre-commit install
+# Update main branch
+git checkout main
+git pull upstream main
 
-# Runs automatically on git commit
-# Or run manually:
-pre-commit run --all-files
+# Create feature branch
+git checkout -b feature/amazing-feature
+
+# Or for bug fixes:
+git checkout -b fix/issue-123
 ```
 
 ---
 
 ## Coding Standards
 
-### Python Code Style
+### Python Style Guide
 
-**Follow PEP 8** with these specifics:
+**We follow PEP 8 with some modifications:**
 
 - **Line length**: 88 characters (Black default)
 - **Indentation**: 4 spaces
-- **Quotes**: Double quotes for strings
 - **Naming**:
-  - Functions/variables: `snake_case`
   - Classes: `PascalCase`
+  - Functions/variables: `snake_case`
   - Constants: `UPPER_SNAKE_CASE`
-
-**Format with Black:**
-```bash
-black raspberry-pi/ tests/
-```
-
-**Lint with flake8:**
-```bash
-flake8 raspberry-pi/ tests/
-```
-
-**Type checking with mypy:**
-```bash
-mypy raspberry-pi/
-```
+- **Docstrings**: Google style
 
 **Example:**
-```python
-from typing import Optional
 
-class DeviceManager:
-    """Manages paired devices."""
+```python
+class CryptoUtils:
+    """Utility class for cryptographic operations.
     
-    def __init__(self, db_path: str) -> None:
-        """Initialize device manager.
+    This class provides TOTP generation, validation, and
+    secure key management functionality.
+    """
+    
+    def generate_totp(self, secret: str, window: int = 0) -> str:
+        """Generate TOTP code for given secret.
         
         Args:
-            db_path: Path to SQLite database
-        """
-        self.db_path = db_path
-    
-    def get_device(self, device_id: str) -> Optional[dict]:
-        """Retrieve device by ID.
-        
-        Args:
-            device_id: Unique device identifier
+            secret: Base32-encoded secret key
+            window: Time window offset (default: 0)
             
         Returns:
-            Device dict or None if not found
+            Six-digit TOTP code as string
+            
+        Raises:
+            ValueError: If secret is invalid
         """
-        # Implementation
-        pass
+        if not secret:
+            raise ValueError("Secret cannot be empty")
+        
+        # Implementation...
+        return totp_code
 ```
 
-### Kotlin Code Style
+### Format Code with Black
 
-**Follow Kotlin Coding Conventions:**
+```bash
+# Format all Python files
+black raspberry-pi/*.py tests/*.py
 
-- **Indentation**: 4 spaces
-- **Line length**: 120 characters
-- **Naming**:
+# Check without modifying
+black --check raspberry-pi/*.py
+```
+
+### Lint with Flake8
+
+```bash
+# Check code quality
+flake8 raspberry-pi/ tests/
+
+# Ignore specific warnings (if justified)
+flake8 --extend-ignore=E203,W503 raspberry-pi/
+```
+
+### Type Hints
+
+Use type hints for function signatures:
+
+```python
+from typing import List, Dict, Optional
+
+def validate_totp(
+    secret: str, 
+    code: str, 
+    window: int = 1
+) -> bool:
+    """Validate TOTP code."""
+    # Implementation...
+    return True
+```
+
+### Kotlin Style Guide
+
+**We follow official Kotlin style:**
+
+- **Naming**: 
   - Classes: `PascalCase`
   - Functions/variables: `camelCase`
   - Constants: `UPPER_SNAKE_CASE`
-
-**Format with ktlint:**
-```bash
-./gradlew ktlintFormat
-```
+- **Indentation**: 4 spaces
+- **Line length**: 100 characters
 
 **Example:**
+
 ```kotlin
-class DeviceRepository(
-    private val deviceDao: DeviceDao,
-    private val totpManager: TotpManager
-) {
-    /**
-     * Fetches all paired devices from local database.
-     */
-    suspend fun getAllDevices(): List<Device> {
-        return deviceDao.getAllDevices()
+class TotpManager(private val context: Context) {
+    companion object {
+        private const val TAG = "TotpManager"
+        private const val TOTP_PERIOD = 30
     }
     
     /**
-     * Generates TOTP for given device.
+     * Generate TOTP code for given secret.
+     * 
+     * @param secret Base32-encoded secret key
+     * @return Six-digit TOTP code
      */
-    fun generateTotp(device: Device): String {
-        return totpManager.generateTotp(device.secret)
+    fun generateTotp(secret: String): String {
+        require(secret.isNotEmpty()) { "Secret cannot be empty" }
+        
+        // Implementation...
+        return totpCode
     }
-}
-```
-
-### Documentation
-
-**Python docstrings (Google style):**
-```python
-def validate_totp(secret: str, totp: str, window: int = 1) -> bool:
-    """Validate TOTP code against secret.
-    
-    Args:
-        secret: Base32-encoded secret key
-        totp: 6-digit TOTP code to validate
-        window: Time window tolerance (default: 1)
-        
-    Returns:
-        True if TOTP is valid, False otherwise
-        
-    Raises:
-        ValueError: If secret is invalid format
-    """
-    pass
-```
-
-**Kotlin KDoc:**
-```kotlin
-/**
- * Validates TOTP code against device secret.
- *
- * @param device Device with secret key
- * @param totp 6-digit TOTP code
- * @return true if valid, false otherwise
- */
-fun validateTotp(device: Device, totp: String): Boolean {
-    // Implementation
 }
 ```
 
 ---
 
-## Commit Messages
+## Commit Guidelines
 
-### Format
+### Commit Message Format
 
-Use **Conventional Commits** format:
+We use **Conventional Commits** for clear, semantic commit messages:
 
 ```
 <type>(<scope>): <subject>
@@ -348,43 +335,41 @@ Use **Conventional Commits** format:
 <footer>
 ```
 
-### Types
-
+**Types:**
 - `feat`: New feature
 - `fix`: Bug fix
-- `docs`: Documentation only
-- `style`: Code style (formatting, no logic change)
-- `refactor`: Code refactoring
-- `perf`: Performance improvement
+- `docs`: Documentation changes
+- `style`: Code style (formatting, missing semicolons, etc.)
+- `refactor`: Code refactoring (no functionality change)
+- `perf`: Performance improvements
 - `test`: Adding or updating tests
-- `build`: Build system or dependencies
-- `ci`: CI configuration
-- `chore`: Maintenance tasks
+- `chore`: Maintenance tasks (dependencies, build, etc.)
 
-### Examples
+**Examples:**
 
 ```bash
 # Good commits
-feat(android): add dark mode support
-fix(ble): resolve connection timeout issue
-docs(readme): update installation instructions
-test(crypto): add TOTP edge case tests
+git commit -m "feat(crypto): add HMAC verification support"
+git commit -m "fix(ble): handle connection timeout gracefully"
+git commit -m "docs(readme): update installation instructions"
+git commit -m "test(pairing): add tests for duplicate device names"
 
-# With body
-feat(api): add device deletion endpoint
+# With body and footer
+git commit -m "feat(android): add dark mode support
 
-Adds DELETE /api/devices/<id> endpoint to remove
-paired devices from database. Includes authentication
-check and cascade deletion of associated data.
+Implements Material 3 dynamic theming with automatic
+light/dark mode switching based on system settings.
 
-Closes #42
-
-# Breaking change
-feat(auth)!: require TOTP for all operations
-
-BREAKING CHANGE: All API endpoints now require TOTP
-authentication. Update clients to include totp field.
+Closes #42"
 ```
+
+### Commit Best Practices
+
+- **One logical change per commit**
+- **Write in imperative mood**: "Add feature" not "Added feature"
+- **Limit subject to 50 characters**
+- **Wrap body at 72 characters**
+- **Reference issues**: `Fixes #123`, `Closes #456`
 
 ---
 
@@ -392,130 +377,118 @@ authentication. Update clients to include totp field.
 
 ### Before Submitting
 
-1. **Create feature branch:**
+1. **Update from upstream:**
    ```bash
-   git checkout -b feature/my-awesome-feature
+   git checkout main
+   git pull upstream main
+   git checkout feature/amazing-feature
+   git rebase main
    ```
 
-2. **Make your changes**
-   - Follow coding standards
-   - Add tests for new functionality
-   - Update documentation
-
-3. **Run tests:**
+2. **Run tests:**
    ```bash
+   # Backend tests
    pytest tests/ -v
-   ./gradlew test  # For Android
+   
+   # Android tests
+   cd android-app
+   ./gradlew test
    ```
 
-4. **Format code:**
+3. **Format code:**
    ```bash
    black raspberry-pi/ tests/
-   ./gradlew ktlintFormat
+   flake8 raspberry-pi/ tests/
    ```
+
+4. **Update documentation** if needed
 
 5. **Commit changes:**
    ```bash
    git add .
-   git commit -m "feat(scope): add feature"
+   git commit -m "feat(scope): description"
    ```
 
 6. **Push to your fork:**
    ```bash
-   git push origin feature/my-awesome-feature
+   git push origin feature/amazing-feature
    ```
 
-### Submitting PR
+### Creating Pull Request
 
-1. **Open Pull Request** on GitHub
-2. **Fill out PR template:**
+1. **Go to GitHub** and create PR from your fork
 
-```markdown
-## Description
-Brief description of changes.
+2. **Fill PR template:**
 
-## Type of Change
-- [ ] Bug fix
-- [ ] New feature
-- [ ] Breaking change
-- [ ] Documentation update
-
-## Testing
-- [ ] All existing tests pass
-- [ ] Added tests for new functionality
-- [ ] Tested on real hardware (if applicable)
-
-## Checklist
-- [ ] Code follows project style guidelines
-- [ ] Self-review of code completed
-- [ ] Comments added for complex logic
-- [ ] Documentation updated
-- [ ] No new warnings generated
-
-## Screenshots (if applicable)
-
-## Related Issues
-Closes #issue_number
-```
+   ```markdown
+   ## Description
+   Brief description of changes
+   
+   ## Type of Change
+   - [ ] Bug fix
+   - [ ] New feature
+   - [ ] Breaking change
+   - [ ] Documentation update
+   
+   ## Changes Made
+   - Added X functionality
+   - Fixed Y issue
+   - Updated Z documentation
+   
+   ## Testing
+   - [ ] All tests pass
+   - [ ] Added new tests for changes
+   - [ ] Manual testing completed
+   
+   ## Screenshots (if applicable)
+   [Attach screenshots]
+   
+   ## Checklist
+   - [ ] Code follows project style
+   - [ ] Self-review completed
+   - [ ] Documentation updated
+   - [ ] No breaking changes (or documented)
+   
+   ## Related Issues
+   Closes #123
+   ```
 
 3. **Wait for review**
-   - Maintainers will review your PR
-   - Address any requested changes
-   - CI checks must pass
 
-4. **PR approved and merged!**
+### Review Process
 
-### PR Review Criteria
+- **Maintainers will review** within 48 hours
+- **Address feedback** by pushing new commits
+- **Keep PR focused** - one feature/fix per PR
+- **Be patient and respectful**
 
-- Code quality and readability
-- Test coverage
-- Documentation completeness
-- No breaking changes (unless justified)
-- Performance impact
-- Security considerations
+### Merging
+
+- PRs require **at least one approval**
+- **All CI checks must pass**
+- **Conflicts must be resolved**
+- Maintainers will **squash and merge**
 
 ---
 
-## Testing Requirements
-
-### Backend Tests
-
-**Required for new features:**
-- Unit tests for all new functions
-- Integration tests for API endpoints
-- Edge case coverage
-
-**Run tests:**
-```bash
-pytest tests/ -v --cov=raspberry-pi
-```
-
-**Minimum coverage:** 80%
-
-### Android Tests
-
-**Required:**
-- Unit tests for ViewModels
-- Unit tests for Use Cases
-- UI tests for critical flows
-
-**Run tests:**
-```bash
-./gradlew test
-./gradlew connectedAndroidTest
-```
+## Testing
 
 ### Writing Tests
 
-**Example (Python):**
+**Every new feature or bug fix should include tests.**
+
+**Backend Test Example:**
+
 ```python
+# tests/test_crypto_utils.py
 import pytest
-from raspberry_pi.crypto_utils import CryptoUtils
+from raspberry-pi.crypto_utils import CryptoUtils
 
 def test_totp_generation():
-    """Test TOTP generation produces 6-digit code."""
+    """Test TOTP code generation."""
     crypto = CryptoUtils()
-    secret = crypto.generate_secret()
+    secret = "JBSWY3DPEHPK3PXP"
+    
     totp = crypto.generate_totp(secret)
     
     assert len(totp) == 6
@@ -524,97 +497,98 @@ def test_totp_generation():
 def test_totp_validation():
     """Test TOTP validation with correct code."""
     crypto = CryptoUtils()
-    secret = crypto.generate_secret()
-    totp = crypto.generate_totp(secret)
+    secret = "JBSWY3DPEHPK3PXP"
     
-    assert crypto.validate_totp(secret, totp) is True
+    totp = crypto.generate_totp(secret)
+    is_valid = crypto.validate_totp(secret, totp)
+    
+    assert is_valid is True
+
+def test_invalid_totp():
+    """Test TOTP validation with incorrect code."""
+    crypto = CryptoUtils()
+    secret = "JBSWY3DPEHPK3PXP"
+    
+    is_valid = crypto.validate_totp(secret, "000000")
+    
+    assert is_valid is False
 ```
 
-**Example (Kotlin):**
-```kotlin
-@Test
-fun `generateTotp produces 6 digit code`() {
-    val totpManager = TotpManager()
-    val secret = "JBSWY3DPEHPK3PXP"
-    
-    val totp = totpManager.generateTotp(secret)
-    
-    assertEquals(6, totp.length)
-    assertTrue(totp.all { it.isDigit() })
-}
+**Run Tests:**
+
+```bash
+# Run all tests
+pytest tests/ -v
+
+# Run specific test file
+pytest tests/test_crypto_utils.py -v
+
+# Run with coverage
+pytest tests/ --cov=raspberry-pi --cov-report=html
 ```
 
 ---
 
 ## Documentation
 
-### Update Documentation
+### Updating Documentation
 
-**When adding features:**
-- Update README.md with new functionality
-- Add examples to relevant guides
-- Update API documentation
-- Add inline code comments for complex logic
+When adding features or fixing bugs, update relevant documentation:
 
-**Documentation files:**
-- `README.md` - Project overview
-- `INSTALL.md` - Installation guide
-- `TESTING.md` - Testing procedures
-- `TROUBLESHOOTING.md` - Common issues
-- `PROJECT_MAP.md` - Code structure
+- **README.md**: Overview and quick start
+- **INSTALL.md**: Installation procedures
+- **TESTING.md**: Testing instructions
+- **TROUBLESHOOTING.md**: Known issues and solutions
+- **Code comments**: Docstrings for classes/functions
 
 ### Documentation Style
 
-- Use clear, concise language
-- Include code examples
-- Add screenshots for UI features
-- Keep formatting consistent
-- Test all command examples
+- **Clear and concise** language
+- **Step-by-step instructions** with code examples
+- **Screenshots or diagrams** for complex concepts
+- **Keep it updated** with code changes
 
 ---
 
-## Release Process
+## Community
 
-**For maintainers:**
+### Communication Channels
 
-1. Update version in:
-   - `android-app/app/build.gradle.kts`
-   - `raspberry-pi/setup.py` (if exists)
-   - `PROGRESS.md`
+- **GitHub Issues**: Bug reports and feature requests
+- **GitHub Discussions**: General questions and ideas
+- **Pull Requests**: Code contributions and reviews
 
-2. Update CHANGELOG.md
+### Getting Help
 
-3. Create release branch:
-   ```bash
-   git checkout -b release/v1.1.0
-   ```
+- **Check documentation first**: README, INSTALL, TROUBLESHOOTING
+- **Search existing issues** before creating new ones
+- **Be specific** in questions and provide context
+- **Be patient** - maintainers are volunteers
 
-4. Tag release:
-   ```bash
-   git tag -a v1.1.0 -m "Release v1.1.0"
-   git push origin v1.1.0
-   ```
+### Recognition
 
-5. Create GitHub Release with:
-   - Release notes
-   - APK file
-   - Installation instructions
+All contributors will be:
+- **Listed in CONTRIBUTORS.md**
+- **Credited in release notes**
+- **Mentioned in project updates**
+
+---
+
+## License
+
+By contributing, you agree that your contributions will be licensed under the **MIT License**.
 
 ---
 
 ## Questions?
 
-- **General questions**: [GitHub Discussions](https://github.com/RevEngine3r/BlueZscript/discussions)
-- **Bug reports**: [GitHub Issues](https://github.com/RevEngine3r/BlueZscript/issues)
-- **Security issues**: Email maintainer privately
+Feel free to reach out:
+- **GitHub Issues**: https://github.com/RevEngine3r/BlueZscript/issues
+- **Discussions**: https://github.com/RevEngine3r/BlueZscript/discussions
+- **Author**: [@RevEngine3r](https://github.com/RevEngine3r)
 
 ---
 
-## Recognition
+**Thank you for contributing to BlueZscript! 🚀**
 
-Contributors will be:
-- Added to CONTRIBUTORS.md
-- Mentioned in release notes
-- Credited in documentation
-
-**Thank you for contributing to BlueZscript!** 🚀
+*Together we make this project better for everyone.*

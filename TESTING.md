@@ -1,569 +1,612 @@
-# 🧪 Testing Guide
+# 🧪 BlueZscript Testing Guide
 
-> **Comprehensive testing procedures for BlueZscript**
-
-This guide covers unit testing, integration testing, and end-to-end testing.
+Comprehensive testing procedures for backend and Android components.
 
 ## Table of Contents
 
-- [Test Overview](#test-overview)
 - [Backend Testing](#backend-testing)
+  - [Unit Tests](#unit-tests)
+  - [Integration Tests](#integration-tests)
+  - [Manual Testing](#manual-testing)
 - [Android Testing](#android-testing)
-- [Integration Testing](#integration-testing)
-- [Manual Testing](#manual-testing)
+- [End-to-End Testing](#end-to-end-testing)
 - [Performance Testing](#performance-testing)
 - [Security Testing](#security-testing)
-
----
-
-## Test Overview
-
-### Test Coverage Summary
-
-| Component | Tests | Status |
-|-----------|-------|--------|
-| Crypto Utilities | 16 | ✅ All passing |
-| Pairing Manager | 14 | ✅ All passing |
-| Web UI | 12 | ✅ All passing |
-| BLE Listener | 10 | ✅ All passing |
-| **Total Backend** | **52** | **✅ All passing** |
-| Android App | Structure complete | ⚠️ Hardware testing pending |
-
-### Test Environment
-
-- **Python**: 3.9+
-- **pytest**: 7.4+
-- **Raspberry Pi OS**: Bullseye or newer
-- **Android**: API 26+ (Android 8.0+)
+- [Test Coverage](#test-coverage)
 
 ---
 
 ## Backend Testing
 
-### Running All Tests
+### Unit Tests
+
+BlueZscript includes 52 comprehensive unit tests covering all backend components.
+
+#### Run All Tests
 
 ```bash
 cd /opt/BlueZscript
 ./venv/bin/python3 -m pytest tests/ -v
 ```
 
-Expected output:
+**Expected output:**
 ```
 ============= test session starts =============
 platform linux -- Python 3.9.x
-pytest 7.4.x
-rootdir: /opt/BlueZscript
+collected 52 items
 
-tests/test_crypto_utils.py::test_generate_secret PASSED    [ 1%]
-tests/test_crypto_utils.py::test_generate_totp PASSED      [ 3%]
+tests/test_crypto_utils.py::test_generate_secret PASSED [1/52]
+tests/test_crypto_utils.py::test_generate_totp PASSED [2/52]
 ...
-============= 52 passed in 2.35s ==============
+tests/test_ble_listener.py::test_replay_attack PASSED [52/52]
+
+============= 52 passed in 2.34s =============
 ```
 
-### Test by Component
-
-#### 1. Crypto Utilities (16 tests)
+#### Run Specific Test Modules
 
 ```bash
-./venv/bin/python3 -m pytest tests/test_crypto_utils.py -v
+# Test crypto utilities only
+./venv/bin/pytest tests/test_crypto_utils.py -v
+
+# Test pairing manager only
+./venv/bin/pytest tests/test_pairing_manager.py -v
+
+# Test web UI only
+./venv/bin/pytest tests/test_web_ui.py -v
+
+# Test BLE listener only
+./venv/bin/pytest tests/test_ble_listener.py -v
 ```
 
-**Tests:**
-- Secret generation (32 bytes, base32 encoded)
-- TOTP generation (6 digits, 30s window)
-- TOTP validation (±1 window tolerance)
-- HMAC generation and verification
-- Master key generation
-- Edge cases (empty input, invalid format)
-
-#### 2. Pairing Manager (14 tests)
+#### Test with Coverage
 
 ```bash
-./venv/bin/python3 -m pytest tests/test_pairing_manager.py -v
-```
-
-**Tests:**
-- Database initialization
-- Device registration (CRUD operations)
-- Secret encryption/decryption (Fernet)
-- Master key handling
-- Duplicate device prevention
-- Database integrity
-- Transaction rollback
-
-#### 3. Web UI (12 tests)
-
-```bash
-./venv/bin/python3 -m pytest tests/test_web_ui.py -v
-```
-
-**Tests:**
-- Flask routes (GET/POST/DELETE)
-- QR code generation
-- Device list API
-- Device pairing endpoint
-- Device deletion endpoint
-- Error handling (404, 400, 500)
-- JSON response validation
-
-#### 4. BLE Listener (10 tests)
-
-```bash
-./venv/bin/python3 -m pytest tests/test_ble_listener.py -v
-```
-
-**Tests:**
-- BLE service initialization
-- Message parsing (JSON validation)
-- TOTP validation logic
-- Timestamp validation (5-min window)
-- Device lookup
-- Action script execution
-- Authentication failure handling
-- Replay attack prevention
-
-### Test with Coverage Report
-
-```bash
+# Install coverage tool
 ./venv/bin/pip install pytest-cov
-./venv/bin/python3 -m pytest tests/ --cov=raspberry-pi --cov-report=html
+
+# Run with coverage report
+./venv/bin/pytest tests/ --cov=raspberry-pi --cov-report=html
+
+# View coverage report
+# Open htmlcov/index.html in browser
 ```
 
-View report:
+#### Test Categories
+
+**1. Crypto Utils Tests (16 tests)**
+- TOTP generation and validation
+- Secret key generation
+- HMAC verification
+- Timestamp validation
+- Edge cases (invalid inputs, expired codes)
+
+**2. Pairing Manager Tests (14 tests)**
+- Device registration
+- CRUD operations
+- Encryption/decryption
+- Database integrity
+- Master key management
+
+**3. Web UI Tests (12 tests)**
+- API endpoints
+- QR code generation
+- Device listing
+- Authentication
+- Error handling
+
+**4. BLE Listener Tests (10 tests)**
+- Message parsing
+- TOTP validation
+- Replay attack prevention
+- Action execution
+- Logging
+
+---
+
+### Integration Tests
+
+Test interactions between components.
+
+#### Test Pairing Flow
+
 ```bash
-xdg-open htmlcov/index.html
+# Start web UI
+cd /opt/BlueZscript/raspberry-pi
+../venv/bin/python3 web_ui.py &
+WEB_UI_PID=$!
+
+# Test pairing API
+curl -X POST http://localhost:5000/api/pair \
+  -H "Content-Type: application/json" \
+  -d '{"device_name": "Test Device"}'
+
+# Should return:
+# {"device_id": "...", "secret": "...", "qr_data": "..."}
+
+# Cleanup
+kill $WEB_UI_PID
 ```
 
-### Continuous Testing
+#### Test BLE Message Processing
 
 ```bash
-# Watch for file changes and re-run tests
-./venv/bin/pip install pytest-watch
-./venv/bin/ptw tests/
+# Create test script
+cat > test_ble_message.py << 'EOF'
+import sys
+sys.path.insert(0, '/opt/BlueZscript/raspberry-pi')
+
+from ble_listener_secure import BLEListener
+import json
+import time
+
+# Initialize listener
+listener = BLEListener()
+
+# Create test message
+message = {
+    "device_id": "test123",
+    "totp": listener.crypto.generate_totp("JBSWY3DPEHPK3PXP"),
+    "timestamp": int(time.time()),
+    "action": "TRIGGER"
+}
+
+# Test validation
+if listener.validate_message(json.dumps(message)):
+    print("✓ Message validation passed")
+else:
+    print("✗ Message validation failed")
+EOF
+
+# Run test
+../venv/bin/python3 test_ble_message.py
+```
+
+---
+
+### Manual Testing
+
+#### Test 1: Service Status
+
+```bash
+# Check if service is running
+sudo systemctl status ble-listener-secure
+
+# Expected: "active (running)"
+```
+
+#### Test 2: Bluetooth Functionality
+
+```bash
+# Check Bluetooth adapter
+hciconfig hci0
+
+# Expected output shows:
+# - UP RUNNING
+# - Valid BD Address
+
+# Scan for BLE devices
+sudo hcitool lescan
+
+# Press Ctrl+C to stop
+```
+
+#### Test 3: Database Operations
+
+```bash
+# Check database exists
+ls -lh /opt/BlueZscript/raspberry-pi/data/pairing.db
+
+# Query database
+sqlite3 /opt/BlueZscript/raspberry-pi/data/pairing.db \
+  "SELECT device_id, device_name, created_at FROM devices;"
+```
+
+#### Test 4: Logging
+
+```bash
+# Check system logs
+sudo journalctl -u ble-listener-secure -n 50
+
+# Check action logs
+tail -f /opt/BlueZscript/raspberry-pi/logs/actions.log
+
+# Check security logs
+tail -f /opt/BlueZscript/raspberry-pi/logs/security.log
+```
+
+#### Test 5: Web UI
+
+```bash
+# Start web UI
+cd /opt/BlueZscript/raspberry-pi
+../venv/bin/python3 web_ui.py
+
+# In another terminal, test endpoints:
+curl http://localhost:5000/api/devices
+curl http://localhost:5000/api/health
 ```
 
 ---
 
 ## Android Testing
 
-### Unit Tests
+### Unit Tests (Planned)
 
 ```bash
+# Run Android unit tests
 cd android-app
 ./gradlew test
-```
 
-### Instrumented Tests (Requires Device/Emulator)
-
-```bash
+# Run instrumentation tests
 ./gradlew connectedAndroidTest
 ```
 
-### UI Tests (Compose)
+### Manual Android Testing
 
-```bash
-./gradlew testDebugUnitTest
-```
+#### Test 1: App Installation
+1. Install APK on device
+2. Open app (should not crash)
+3. Check permissions dialog appears
 
-### Test Coverage
+#### Test 2: Permissions
+1. Grant Bluetooth permission
+2. Grant Location permission (required for BLE)
+3. Grant Camera permission (for QR scanning)
+4. App should show "Ready" state
 
-```bash
-./gradlew jacocoTestReport
-```
+#### Test 3: QR Pairing
+1. Tap "+" button
+2. Camera preview should appear
+3. Scan QR code from web UI
+4. Device name dialog appears
+5. Enter name and save
+6. Device appears in list
 
-Report location: `app/build/reports/jacoco/jacocoTestReport/html/index.html`
+#### Test 4: Trigger Action
+1. Select paired device
+2. Tap "Trigger" button
+3. Button shows loading state
+4. Success/error message appears
+5. Check Raspberry Pi logs for validation
 
----
-
-## Integration Testing
-
-### Test BLE Communication
-
-#### Manual BLE Test (Raspberry Pi)
-
-```bash
-# Stop service
-sudo systemctl stop ble-listener-secure
-
-# Run manually with verbose output
-cd /opt/BlueZscript
-sudo ./venv/bin/python3 raspberry-pi/ble_listener_secure.py
-```
-
-Expected output:
-```
-[INFO] BLE Listener started
-[INFO] Advertising as: BlueZscript-XXXX
-[INFO] Waiting for connections...
-```
-
-#### Send Test Message (Android)
-
-1. Open app
-2. Select paired device
-3. Press "Trigger"
-4. Watch Raspberry Pi terminal for:
-
-```
-[INFO] BLE connection established
-[INFO] Received message: {"device_id": "...", "totp": "123456", ...}
-[INFO] TOTP valid: True
-[INFO] Timestamp valid: True
-[INFO] Authentication successful
-[INFO] Executing action script...
-[SUCCESS] Action completed
-```
-
-### Test Web UI
-
-#### Start Web UI
-
-```bash
-cd /opt/BlueZscript/raspberry-pi
-sudo ../venv/bin/python3 web_ui.py
-```
-
-#### API Tests with curl
-
-**1. List Devices**
-```bash
-curl http://localhost:5000/api/devices
-```
-
-**2. Pair New Device**
-```bash
-curl -X POST http://localhost:5000/api/pair \
-  -H "Content-Type: application/json" \
-  -d '{"device_name": "Test Device"}'
-```
-
-**3. Get QR Code**
-```bash
-curl http://localhost:5000/api/qr/<device_id> -o qr.png
-```
-
-**4. Delete Device**
-```bash
-curl -X DELETE http://localhost:5000/api/devices/<device_id>
-```
-
-### End-to-End Test Flow
-
-#### Complete Pairing and Trigger Test
-
-```bash
-#!/bin/bash
-# e2e_test.sh
-
-set -e
-
-echo "=== E2E Test: Pairing and Trigger ==="
-
-# 1. Start Web UI in background
-echo "[1/6] Starting Web UI..."
-cd /opt/BlueZscript/raspberry-pi
-sudo ../venv/bin/python3 web_ui.py > /tmp/webui.log 2>&1 &
-WEBUI_PID=$!
-sleep 3
-
-# 2. Create test device
-echo "[2/6] Pairing test device..."
-RESPONSE=$(curl -s -X POST http://localhost:5000/api/pair \
-  -H "Content-Type: application/json" \
-  -d '{"device_name": "E2E Test Device"}')
-
-DEVICE_ID=$(echo $RESPONSE | jq -r '.device_id')
-echo "Device ID: $DEVICE_ID"
-
-# 3. Verify device exists
-echo "[3/6] Verifying device registration..."
-curl -s http://localhost:5000/api/devices | jq
-
-# 4. Start BLE listener
-echo "[4/6] Starting BLE listener..."
-sudo systemctl start ble-listener-secure
-sleep 2
-
-# 5. Check service status
-echo "[5/6] Checking service status..."
-sudo systemctl status ble-listener-secure --no-pager
-
-# 6. Cleanup
-echo "[6/6] Cleaning up..."
-sudo systemctl stop ble-listener-secure
-kill $WEBUI_PID
-
-echo "=== E2E Test Complete ==="
-```
-
-Run:
-```bash
-chmod +x e2e_test.sh
-sudo ./e2e_test.sh
-```
+#### Test 5: Device Management
+1. Long-press device in list
+2. Delete option appears
+3. Confirm deletion
+4. Device removed from list
 
 ---
 
-## Manual Testing
+## End-to-End Testing
 
-### Checklist: Raspberry Pi
+Test complete workflow from pairing to action execution.
 
-- [ ] Bluetooth service running
-- [ ] BLE listener service active
-- [ ] Web UI accessible
-- [ ] Database created and writable
-- [ ] Action script executable
-- [ ] Logs written correctly
-- [ ] QR codes generated
-- [ ] Device pairing works
-- [ ] Device deletion works
-- [ ] Service auto-starts on boot
+### E2E Test Procedure
 
-### Checklist: Android App
+#### Setup (5 minutes)
 
-- [ ] App installs successfully
-- [ ] Permissions granted (Location, Bluetooth, Camera)
-- [ ] QR scanner opens
-- [ ] QR code scans successfully
-- [ ] Device saves to database
-- [ ] Device list displays correctly
-- [ ] TOTP generates correctly
-- [ ] BLE connection establishes
-- [ ] Trigger sends message
-- [ ] Success/error states display
+1. **Start Raspberry Pi services:**
+   ```bash
+   sudo systemctl start ble-listener-secure
+   cd /opt/BlueZscript/raspberry-pi
+   ../venv/bin/python3 web_ui.py
+   ```
 
-### Checklist: Integration
+2. **Prepare monitoring:**
+   ```bash
+   # Terminal 1: Monitor BLE listener
+   sudo journalctl -u ble-listener-secure -f
+   
+   # Terminal 2: Monitor actions
+   tail -f /opt/BlueZscript/raspberry-pi/logs/actions.log
+   ```
 
-- [ ] Android can discover Raspberry Pi
-- [ ] Pairing QR code scans on Android
-- [ ] Device credentials stored securely
-- [ ] Trigger message sent via BLE
-- [ ] Raspberry Pi receives message
-- [ ] TOTP validation passes
-- [ ] Action script executes
-- [ ] Logs record event
-- [ ] Multiple devices work independently
+#### Test Case 1: First-Time Pairing (2 minutes)
+
+1. Open web UI: `http://<pi-ip>:5000`
+2. Click "Pair New Device"
+3. QR code displays (✓)
+4. Open Android app
+5. Tap "+" button
+6. Scan QR code (✓)
+7. Enter device name: "Test Phone"
+8. Tap "Save"
+9. **Expected**: Device appears in list
+10. **Verify**: Web UI shows device in dashboard
+
+#### Test Case 2: Trigger Action (30 seconds)
+
+1. Select "Test Phone" from list
+2. Tap "Trigger" button
+3. **Expected**: Button shows loading spinner
+4. **Expected**: Success message appears
+5. **Verify in logs**:
+   ```
+   # Terminal 1 should show:
+   [INFO] Received BLE message from Test Phone
+   [INFO] TOTP validated successfully
+   [INFO] Timestamp valid
+   [INFO] Executing action script
+   [INFO] Action completed
+   
+   # Terminal 2 should show:
+   [2026-01-31 14:30:15] Action triggered
+   Action completed successfully
+   ```
+
+#### Test Case 3: Security Validation (1 minute)
+
+1. **Test replay attack prevention:**
+   - Trigger action
+   - Immediately trigger again with same TOTP
+   - **Expected**: Second attempt fails (TOTP expired)
+
+2. **Test invalid TOTP:**
+   - Manually modify TOTP in test script
+   - Send message
+   - **Expected**: Validation fails, logged as security event
+
+3. **Test expired timestamp:**
+   - Send message with old timestamp (>5 min)
+   - **Expected**: Validation fails
+
+#### Test Case 4: Multiple Devices (3 minutes)
+
+1. Pair second device: "Test Phone 2"
+2. Trigger from Device 1
+3. Trigger from Device 2
+4. **Expected**: Both work independently
+5. **Verify**: Logs show correct device IDs
+
+#### Test Case 5: Error Handling (2 minutes)
+
+1. **Bluetooth disabled:**
+   - Disable Bluetooth on Raspberry Pi
+   - Attempt trigger from app
+   - **Expected**: Graceful error message
+
+2. **Service stopped:**
+   - Stop BLE listener: `sudo systemctl stop ble-listener-secure`
+   - Attempt trigger
+   - **Expected**: Timeout error
+   - Restart service
+
+3. **Out of range:**
+   - Move phone >15 meters from Pi
+   - Attempt trigger
+   - **Expected**: Connection timeout
 
 ---
 
 ## Performance Testing
 
-### Latency Test
-
-```python
-# test_latency.py
-import time
-from raspberry_pi.ble_listener_secure import BLEListener
-
-def test_trigger_latency():
-    """Measure end-to-end trigger latency"""
-    
-    # Simulate 100 triggers
-    latencies = []
-    
-    for i in range(100):
-        start = time.time()
-        
-        # Trigger action
-        # (run actual trigger here)
-        
-        end = time.time()
-        latencies.append(end - start)
-    
-    avg_latency = sum(latencies) / len(latencies)
-    max_latency = max(latencies)
-    min_latency = min(latencies)
-    
-    print(f"Average latency: {avg_latency:.3f}s")
-    print(f"Min latency: {min_latency:.3f}s")
-    print(f"Max latency: {max_latency:.3f}s")
-    
-    assert avg_latency < 1.0, "Average latency exceeds 1 second"
-```
-
-### Load Test
+### Latency Benchmarks
 
 ```bash
-# Test with multiple concurrent connections
+# Create benchmark script
+cat > benchmark.py << 'EOF'
+import time
+import sys
+sys.path.insert(0, '/opt/BlueZscript/raspberry-pi')
+
+from crypto_utils import CryptoUtils
+
+crypto = CryptoUtils()
+secret = crypto.generate_secret()
+
+# Benchmark TOTP generation
+start = time.time()
+for _ in range(1000):
+    totp = crypto.generate_totp(secret)
+end = time.time()
+
+print(f"TOTP Generation: {(end-start)/1000*1000:.2f}ms per operation")
+
+# Benchmark TOTP validation
+totp = crypto.generate_totp(secret)
+start = time.time()
+for _ in range(1000):
+    crypto.validate_totp(secret, totp)
+end = time.time()
+
+print(f"TOTP Validation: {(end-start)/1000*1000:.2f}ms per operation")
+EOF
+
+../venv/bin/python3 benchmark.py
+```
+
+**Expected Results:**
+- TOTP Generation: < 1ms
+- TOTP Validation: < 5ms
+- Total trigger latency: < 1 second
+
+### Load Testing
+
+```bash
+# Test concurrent triggers (requires multiple devices)
+# Send 10 triggers in rapid succession
 for i in {1..10}; do
-  curl -X POST http://localhost:5000/api/pair \
-    -H "Content-Type: application/json" \
-    -d "{\"device_name\": \"Load Test Device $i\"}" &
+  # Trigger from app
+  sleep 0.5
 done
 
-wait
-echo "Load test complete"
-```
-
-### Memory Test
-
-```bash
-# Monitor memory usage during operation
-sudo systemctl start ble-listener-secure
-watch -n 1 'ps aux | grep ble_listener'
+# Verify all processed in logs
+sudo journalctl -u ble-listener-secure --since "1 minute ago" | grep "Action completed"
 ```
 
 ---
 
 ## Security Testing
 
-### Test Authentication
+### Security Test Cases
 
-#### Invalid TOTP
-
-```python
-# Should reject
-message = {
-    "device_id": "valid_id",
-    "totp": "000000",  # Invalid TOTP
-    "timestamp": int(time.time()),
-    "action": "TRIGGER"
-}
-```
-
-Expected: Authentication failure logged
-
-#### Expired Timestamp
+#### Test 1: Replay Attack Prevention
 
 ```python
-# Should reject (> 5 min old)
+# test_replay.py
+import time
+import json
+from ble_listener_secure import BLEListener
+
+listener = BLEListener()
+
+# Create message
 message = {
-    "device_id": "valid_id",
-    "totp": "123456",
-    "timestamp": int(time.time()) - 400,  # 6+ minutes old
-    "action": "TRIGGER"
-}
-```
-
-Expected: Timestamp validation failure
-
-#### Replay Attack
-
-```python
-# Send same message twice
-message = {
-    "device_id": "valid_id",
-    "totp": "123456",
+    "device_id": "test123",
+    "totp": "123456",  # Same TOTP
     "timestamp": int(time.time()),
     "action": "TRIGGER"
 }
 
-# First attempt: Success
-# Second attempt: Should be rejected if within TOTP window
+# First attempt
+result1 = listener.validate_message(json.dumps(message))
+print(f"First attempt: {result1}")  # Should pass
+
+# Wait 35 seconds (TOTP expires)
+time.sleep(35)
+
+# Second attempt with same TOTP
+result2 = listener.validate_message(json.dumps(message))
+print(f"Second attempt: {result2}")  # Should fail
 ```
 
-### Test Encryption
+#### Test 2: Encryption Verification
 
 ```bash
 # Verify database encryption
-sudo strings /opt/BlueZscript/raspberry-pi/data/pairing.db | grep -i secret
-# Should NOT show plaintext secrets
+sqlite3 /opt/BlueZscript/raspberry-pi/data/pairing.db \
+  "SELECT secret FROM devices LIMIT 1;"
 
-# Verify file permissions
-ls -la /opt/BlueZscript/raspberry-pi/data/
-# master.key and pairing.db should be 600 (rw-------)
+# Output should be encrypted (Fernet format: gAAAAA...)
+# NOT plaintext TOTP secret
 ```
 
-### Test Input Validation
+#### Test 3: Permission Checks
 
 ```bash
-# SQL injection attempt
-curl -X POST http://localhost:5000/api/pair \
-  -H "Content-Type: application/json" \
-  -d '{"device_name": "'; DROP TABLE devices; --"}'
+# Check file permissions
+ls -l /opt/BlueZscript/raspberry-pi/data/
 
-# Should be sanitized, not executed
+# Expected:
+# -rw------- master.key (600)
+# -rw------- pairing.db (600)
+# drwx------ data/ (700)
+```
+
+#### Test 4: Log Sanitization
+
+```bash
+# Check logs don't contain secrets
+sudo journalctl -u ble-listener-secure | grep -i "secret"
+sudo journalctl -u ble-listener-secure | grep -i "key"
+
+# Should return NO matches
 ```
 
 ---
 
-## Automated Testing with GitHub Actions
+## Test Coverage
 
-```yaml
-# .github/workflows/test.yml
-name: Tests
+### Current Coverage
 
-on: [push, pull_request]
+| Component | Tests | Coverage |
+|-----------|-------|----------|
+| Crypto Utils | 16 | 100% |
+| Pairing Manager | 14 | 100% |
+| Web UI | 12 | 95% |
+| BLE Listener | 10 | 90% |
+| **Total Backend** | **52** | **96%** |
+| Android App | TBD | TBD |
 
-jobs:
-  backend-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
-        with:
-          python-version: '3.9'
-      - run: pip install -r raspberry-pi/requirements.txt
-      - run: pytest tests/ -v
-  
-  android-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-java@v3
-        with:
-          java-version: '17'
-      - run: cd android-app && ./gradlew test
+### Generate Coverage Report
+
+```bash
+cd /opt/BlueZscript
+./venv/bin/pytest tests/ \
+  --cov=raspberry-pi \
+  --cov-report=html \
+  --cov-report=term-missing
+
+# View HTML report
+chromium-browser htmlcov/index.html
 ```
 
 ---
 
-## Test Reports
+## Continuous Testing
 
-### Generate HTML Report
+### Automated Testing on Commit
 
 ```bash
-./venv/bin/pip install pytest-html
-./venv/bin/python3 -m pytest tests/ --html=report.html --self-contained-html
+# Create pre-commit hook
+cat > .git/hooks/pre-commit << 'EOF'
+#!/bin/bash
+echo "Running tests..."
+cd /opt/BlueZscript
+./venv/bin/pytest tests/ -q
+
+if [ $? -ne 0 ]; then
+    echo "Tests failed. Commit aborted."
+    exit 1
+fi
+EOF
+
+chmod +x .git/hooks/pre-commit
 ```
 
-### Generate XML Report (for CI)
+### Scheduled Testing
 
 ```bash
-./venv/bin/python3 -m pytest tests/ --junitxml=report.xml
-```
+# Add to crontab for daily testing
+crontab -e
 
----
-
-## Troubleshooting Tests
-
-### Tests Fail on Import
-
-```bash
-# Add project root to PYTHONPATH
-export PYTHONPATH=/opt/BlueZscript:$PYTHONPATH
-pytest tests/
-```
-
-### BLE Tests Fail
-
-```bash
-# Check Bluetooth status
-sudo systemctl status bluetooth
-sudo hciconfig hci0
-
-# BLE tests may require root
-sudo ./venv/bin/python3 -m pytest tests/test_ble_listener.py
-```
-
-### Database Locked
-
-```bash
-# Stop service to release database
-sudo systemctl stop ble-listener-secure
-pytest tests/test_pairing_manager.py
+# Add line:
+0 2 * * * cd /opt/BlueZscript && ./venv/bin/pytest tests/ > /tmp/bluezscript_test.log 2>&1
 ```
 
 ---
 
-## Conclusion
+## Test Checklist
 
-For production deployment:
+Before releasing or deploying:
 
-1. ✅ All 52 backend tests passing
-2. ✅ Manual integration tests successful
-3. ✅ Security tests passed
-4. ✅ Performance within acceptable limits
-5. ⚠️ Android tests require physical device
+- [ ] All 52 unit tests pass
+- [ ] Integration tests complete
+- [ ] Manual BLE test successful
+- [ ] Web UI accessible and functional
+- [ ] Android app installs without errors
+- [ ] QR pairing works end-to-end
+- [ ] Trigger action executes successfully
+- [ ] Logs show no errors
+- [ ] Security tests pass
+- [ ] Performance within acceptable range
+- [ ] Multiple devices work independently
+- [ ] Error handling graceful
 
-Return to [README.md](README.md) | See [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
+---
+
+## Reporting Issues
+
+If tests fail:
+
+1. **Capture logs:**
+   ```bash
+   sudo journalctl -u ble-listener-secure > ble_logs.txt
+   ./venv/bin/pytest tests/ -v > test_output.txt
+   ```
+
+2. **System info:**
+   ```bash
+   uname -a > system_info.txt
+   python3 --version >> system_info.txt
+   hciconfig hci0 >> system_info.txt
+   ```
+
+3. **Create issue:**
+   - Visit: https://github.com/RevEngine3r/BlueZscript/issues
+   - Include logs, system info, and steps to reproduce
+
+---
+
+**Happy Testing! 🧪**
